@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import ResumePage from "./ResumePage";
 
 const NAV_LINKS = ["About", "Ministry", "Qualifications", "Skills", "Journey", "Testimonials", "Contact"];
 
@@ -103,11 +104,17 @@ function SkillBar({ label, level, delay }) {
 export default function Portfolio() {
   const [activeNav, setActiveNav] = useState("About");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState("portfolio"); // "portfolio" or "resume"
 
   const scrollTo = (id) => {
     document.getElementById(id.toLowerCase())?.scrollIntoView({ behavior: "smooth" });
     setMenuOpen(false);
   };
+
+  // If Resume Page is selected, show it
+  if (currentPage === "resume") {
+    return <ResumePage onBackClick={() => setCurrentPage("portfolio")} />;
+  }
 
   return (
     <div style={{ fontFamily: "'Georgia', 'Times New Roman', serif", background: "#FAF6F1", color: "#3d2b1f", minHeight: "100vh" }}>
@@ -190,17 +197,13 @@ export default function Portfolio() {
                 <span style={{ color: "#8B6A4F" }}>15+ years of dedicated service at Bungoma Bible School</span>
               </p>
               <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-                <button className="btn-primary" onClick={() => scrollTo("Ministry")}>View Ministry</button>
+                <button className="btn-primary" onClick={() => setCurrentPage("resume")}>View Resume</button>
                 <button className="btn-outline" onClick={() => scrollTo("Contact")}>Get In Touch</button>
               </div>
             </div>
             <div style={{ flex: "0 0 auto" }}>
-              <div style={{ width: "240px", height: "300px", background: "linear-gradient(145deg, #D4B896, #C2956C)", borderRadius: "4px", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
-                <div style={{ position: "absolute", inset: 0, background: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.08'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }} />
-                <div style={{ textAlign: "center", position: "relative", zIndex: 1 }}>
-                  <div className="display" style={{ fontSize: "72px", lineHeight: 1, color: "rgba(255,255,255,0.9)" }}>E</div>
-                  <div className="sans" style={{ fontSize: "12px", letterSpacing: "0.15em", color: "rgba(255,255,255,0.7)", textTransform: "uppercase", marginTop: "8px" }}>Photo</div>
-                </div>
+              <div style={{ width: "240px", height: "300px", borderRadius: "4px", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+                <img src="/media/images/img.jpeg" alt="Eunice Ngosia Mukhebi" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", borderRadius: "4px" }} />
               </div>
               <div style={{ marginTop: "1rem", textAlign: "center" }}>
                 <p className="sans" style={{ fontSize: "11px", color: "#8B6A4F", letterSpacing: "0.08em" }}>BUNGOMA, KENYA</p>
