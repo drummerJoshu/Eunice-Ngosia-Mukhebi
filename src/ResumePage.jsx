@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { canPreviewInline, getMediaType, mediaLibrary } from "./utils/media";
 
 function useInView(ref) {
   const [inView, setInView] = useState(false);
@@ -20,7 +21,7 @@ function AnimatedSection({ children, className = "" }) {
   );
 }
 
-function DocumentCard({ name, type, size, downloadPath, previewPath }) {
+function DocumentCard({ name, type, size, downloadPath, previewPath, onPreview }) {
   const getIcon = (type) => {
     const icons = { pdf: "📄", docx: "📋", doc: "📋", xlsx: "📊", xls: "📊" };
     return icons[type.toLowerCase()] || "📎";
@@ -45,11 +46,12 @@ function DocumentCard({ name, type, size, downloadPath, previewPath }) {
                 </a>
               )}
               {previewPath && (
-                <a href={previewPath} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", border: "1px solid #8B4513", color: "#8B4513", padding: "6px 14px", borderRadius: "2px", textDecoration: "none", fontSize: "11px", letterSpacing: "0.08em", textTransform: "uppercase", cursor: "pointer", transition: "all 0.2s", background: "transparent" }}
+                <button type="button" style={{ display: "inline-block", border: "1px solid #8B4513", color: "#8B4513", padding: "6px 14px", borderRadius: "2px", textDecoration: "none", fontSize: "11px", letterSpacing: "0.08em", textTransform: "uppercase", cursor: "pointer", transition: "all 0.2s", background: "transparent" }}
+                  onClick={() => onPreview?.({ name, path: previewPath, type })}
                   onMouseEnter={(e) => { e.currentTarget.style.background = "#8B4513"; e.currentTarget.style.color = "#FAF6F1"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#8B4513"; }}>
                   👁 Preview
-                </a>
+                </button>
               )}
             </div>
           </div>
@@ -59,50 +61,29 @@ function DocumentCard({ name, type, size, downloadPath, previewPath }) {
   );
 }
 
-function ImageGallery({ images }) {
-  const [selectedImage, setSelectedImage] = useState(null);
-
+function ImageGallery({ images, onPreview }) {
   return (
     <div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "1.5rem", marginBottom: "2rem" }}>
         {images.map((img, i) => (
           <AnimatedSection key={i}>
             <div style={{ cursor: "pointer", overflow: "hidden", borderRadius: "4px", aspectRatio: "1", position: "relative" }}
-              onClick={() => setSelectedImage(img)}
+              onClick={() => onPreview?.({ name: img.name, path: img.path, type: "image" })}
               onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.05)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}>
               <img src={img.path} alt={img.name} style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.3s" }} />
-              <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0, transition: "opacity 0.3s", cursor: "pointer" }}
-                onMouseEnter={(e) => { e.parentElement.style.opacity = "1"; }}
-                onMouseLeave={(e) => { e.parentElement.style.opacity = "0"; }}>
+              <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.25)", display: "flex", alignItems: "center", justifyContent: "center", opacity: 1, transition: "opacity 0.3s", cursor: "pointer" }}>
                 <span style={{ color: "#FAF6F1", fontSize: "2rem" }}>🔍</span>
               </div>
             </div>
           </AnimatedSection>
         ))}
       </div>
-
-      {selectedImage && (
-        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.9)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "2rem" }}
-          onClick={() => setSelectedImage(null)}>
-          <button onClick={() => setSelectedImage(null)} style={{ position: "absolute", top: "2rem", right: "2rem", background: "#8B4513", border: "none", color: "#FAF6F1", fontSize: "1.5rem", cursor: "pointer", width: "44px", height: "44px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            ✕
-          </button>
-          <img src={selectedImage.path} alt={selectedImage.name} style={{ maxWidth: "90%", maxHeight: "90vh", objectFit: "contain", borderRadius: "4px", animation: "fadeIn 0.3s ease" }} />
-        </div>
-      )}
-
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-      `}</style>
     </div>
   );
 }
 
-function VideoPlayer({ src, title }) {
+function VideoPlayer({ src, title, onPreview }) {
   return (
     <AnimatedSection>
       <div style={{ background: "#FFFDF9", border: "1px solid #E8DDD4", borderRadius: "4px", overflow: "hidden" }}>
@@ -111,9 +92,71 @@ function VideoPlayer({ src, title }) {
         </div>
         <div style={{ padding: "1.5rem" }}>
           <h4 className="display" style={{ fontSize: "1rem", fontWeight: 500, color: "#2C1A0E" }}>{title}</h4>
+          <button
+            type="button"
+            className="sans"
+            onClick={() => onPreview?.({ name: title, path: src, type: "video" })}
+            style={{ marginTop: "12px", border: "1px solid #8B4513", color: "#8B4513", background: "transparent", padding: "8px 14px", fontSize: "11px", letterSpacing: "0.08em", textTransform: "uppercase", borderRadius: "2px", cursor: "pointer" }}>
+            👁 Preview
+          </button>
         </div>
       </div>
     </AnimatedSection>
+  );
+}
+
+function MediaPreviewModal({ item, onClose }) {
+  useEffect(() => {
+    if (!item) {
+      return undefined;
+    }
+
+    const onEsc = (event) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", onEsc);
+    return () => window.removeEventListener("keydown", onEsc);
+  }, [item, onClose]);
+
+  if (!item) {
+    return null;
+  }
+
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "2rem" }}>
+      <button
+        type="button"
+        onClick={onClose}
+        style={{ position: "absolute", top: "2rem", right: "2rem", background: "#8B4513", border: "none", color: "#FAF6F1", fontSize: "1.5rem", cursor: "pointer", width: "44px", height: "44px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        ✕
+      </button>
+
+      <div onClick={(event) => event.stopPropagation()} style={{ width: "min(1100px, 94vw)", maxHeight: "90vh", background: "#1a0f08", borderRadius: "6px", overflow: "hidden", border: "1px solid #6B3410" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem 1rem", background: "#2C1A0E", color: "#FAF6F1" }}>
+          <span className="sans" style={{ fontSize: "12px", letterSpacing: "0.06em", textTransform: "uppercase" }}>{item.name}</span>
+          <a href={item.path} target="_blank" rel="noopener noreferrer" className="sans" style={{ fontSize: "11px", color: "#FAF6F1", textDecoration: "underline" }}>
+            Open in New Tab
+          </a>
+        </div>
+
+        {item.mediaType === "image" && (
+          <img src={item.path} alt={item.name} style={{ width: "100%", maxHeight: "calc(90vh - 60px)", objectFit: "contain", background: "#000" }} />
+        )}
+
+        {item.mediaType === "video" && (
+          <video src={item.path} controls autoPlay style={{ width: "100%", maxHeight: "calc(90vh - 60px)", objectFit: "contain", background: "#000" }} />
+        )}
+
+        {item.mediaType === "pdf" && (
+          <iframe src={item.path} title={item.name} style={{ width: "100%", height: "calc(90vh - 60px)", border: "none", background: "#fff" }} />
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -159,20 +202,24 @@ function SectionHeader({ label, title, subtitle }) {
 
 export default function ResumePage({ onBackClick }) {
   const [activeTab, setActiveTab] = useState("resume");
-  const [images, setImages] = useState([]);
-  const [videos, setVideos] = useState([]);
+  const [previewItem, setPreviewItem] = useState(null);
 
-  useEffect(() => {
-    // Load images from the public/media/images folder
-    setImages([
-      { name: "Portrait 1", path: "/media/images/img.jpeg" },
-    ]);
+  const resumeDocuments = mediaLibrary.resumeDocuments;
+  const certificates = mediaLibrary.certificates;
+  const documents = mediaLibrary.documents;
+  const images = mediaLibrary.images;
+  const videos = mediaLibrary.videos;
 
-    // Load sample videos (users can add their own)
-    setVideos([
-      // { name: "Ministry Highlight", path: "/media/videos/sample.mp4" },
-    ]);
-  }, []);
+  const handlePreview = ({ name, path, type }) => {
+    const mediaType = getMediaType(path, type);
+
+    if (!canPreviewInline(mediaType)) {
+      window.open(path, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    setPreviewItem({ name, path, mediaType });
+  };
 
   const tabs = [
     { id: "resume", label: "Resume", icon: "📄" },
@@ -182,24 +229,6 @@ export default function ResumePage({ onBackClick }) {
     { id: "videos", label: "Videos", icon: "🎬" },
     { id: "testimonials", label: "Testimonials", icon: "⭐" },
     { id: "achievements", label: "Achievements", icon: "🏆" },
-  ];
-
-  const resumeDocuments = [
-    { name: "CV - Eunice Ngosia Mukhebi", type: "PDF", size: "2.4 MB", downloadPath: "/media/resume/cv.pdf", previewPath: "/media/resume/cv.pdf" },
-  ];
-
-  const certificates = [
-    { name: "Master's Degree in Biblical Studies", type: "PDF", size: "1.2 MB", downloadPath: "/media/certificates/masters.pdf", previewPath: "/media/certificates/masters.pdf" },
-    { name: "Bachelor of Arts in Biblical Studies", type: "PDF", size: "890 KB", downloadPath: "/media/certificates/bachelors.pdf", previewPath: "/media/certificates/bachelors.pdf" },
-    { name: "Advanced Diploma in Biblical Studies", type: "PDF", size: "756 KB", downloadPath: "/media/certificates/diploma.pdf", previewPath: "/media/certificates/diploma.pdf" },
-    { name: "Certificate - School of Worship", type: "PDF", size: "645 KB", downloadPath: "/media/certificates/worship.pdf", previewPath: "/media/certificates/worship.pdf" },
-  ];
-
-  const documents = [
-    { name: "Statement of Purpose", type: "DOCX", size: "450 KB", downloadPath: "/media/documents/statement.docx", previewPath: null },
-    { name: "Curriculum Vitae (Detailed)", type: "DOCX", size: "680 KB", downloadPath: "/media/documents/cv_detailed.docx", previewPath: null },
-    { name: "Ministry Portfolio", type: "PDF", size: "3.1 MB", downloadPath: "/media/documents/portfolio.pdf", previewPath: "/media/documents/portfolio.pdf" },
-    { name: "Reference Letters", type: "PDF", size: "2.8 MB", downloadPath: "/media/documents/references.pdf", previewPath: "/media/documents/references.pdf" },
   ];
 
   const testimonialsList = [
@@ -286,7 +315,7 @@ export default function ResumePage({ onBackClick }) {
                 <SectionHeader label="Main Document" title="Resume / CV" subtitle="Professional resume and curriculum vitae for ministry and professional opportunities." />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "2rem" }}>
                   {resumeDocuments.map((doc, i) => (
-                    <DocumentCard key={i} {...doc} />
+                    <DocumentCard key={i} {...doc} onPreview={handlePreview} />
                   ))}
                 </div>
               </AnimatedSection>
@@ -298,7 +327,7 @@ export default function ResumePage({ onBackClick }) {
                 <SectionHeader label="Academic Credentials" title="Certificates & Degrees" subtitle="Official certificates and degrees from recognized institutions, ranging from certificate to master's level." />
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "2rem" }}>
                   {certificates.map((cert, i) => (
-                    <DocumentCard key={i} {...cert} />
+                    <DocumentCard key={i} {...cert} onPreview={handlePreview} />
                   ))}
                 </div>
               </AnimatedSection>
@@ -310,7 +339,7 @@ export default function ResumePage({ onBackClick }) {
                 <SectionHeader label="Supporting Files" title="Documents & References" subtitle="Additional documents including statements of purpose, detailed CVs, portfolio collections, and professional references." />
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "2rem" }}>
                   {documents.map((doc, i) => (
-                    <DocumentCard key={i} {...doc} />
+                    <DocumentCard key={i} {...doc} onPreview={handlePreview} />
                   ))}
                 </div>
               </AnimatedSection>
@@ -321,7 +350,7 @@ export default function ResumePage({ onBackClick }) {
               <AnimatedSection>
                 <SectionHeader label="Visual Gallery" title="Images & Photos" subtitle="Professional photos and images from ministry, academic, and professional contexts." />
                 {images.length > 0 ? (
-                  <ImageGallery images={images} />
+                  <ImageGallery images={images} onPreview={handlePreview} />
                 ) : (
                   <div style={{ padding: "3rem 2rem", textAlign: "center", background: "#FFFDF9", borderRadius: "4px", border: "1px solid #E8DDD4" }}>
                     <p className="sans" style={{ fontSize: "14px", color: "#8B6A4F" }}>No images available yet. Add images to /public/media/images/ folder.</p>
@@ -337,7 +366,7 @@ export default function ResumePage({ onBackClick }) {
                 {videos.length > 0 ? (
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: "2rem" }}>
                     {videos.map((video, i) => (
-                      <VideoPlayer key={i} {...video} />
+                      <VideoPlayer key={i} src={video.path} title={video.name} onPreview={handlePreview} />
                     ))}
                   </div>
                 ) : (
@@ -405,6 +434,8 @@ export default function ResumePage({ onBackClick }) {
           © 2026 Eunice Ngosia Mukhebi · Christian Ministry & Chaplaincy · KNQF Level 6 RPL Candidate
         </p>
       </footer>
+
+      <MediaPreviewModal item={previewItem} onClose={() => setPreviewItem(null)} />
     </div>
   );
 }
